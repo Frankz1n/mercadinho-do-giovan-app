@@ -1,0 +1,100 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import { authRepository, LOCAL_ADMIN_HINT } from '@/features/auth/data/auth-repository';
+import type { AppUser } from '@/features/auth/domain/auth';
+
+type AuthContextValue = {
+  user: AppUser | null;
+  isLoading: boolean;
+  isAdmin: boolean;
+  adminHint: typeof LOCAL_ADMIN_HINT;
+  login: (email: string, password: string) => Promise<AppUser>;
+  register: (input: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+  }) => Promise<AppUser>;
+  recoverPassword: (email: string) => Promise<{ temporaryPassword: string }>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    const currentUser = await authRepository.getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        await refresh();
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [refresh]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const nextUser = await authRepository.login(email, password);
+    setUser(nextUser);
+    return nextUser;
+  }, []);
+
+  const register = useCallback(
+    async (input: { name: string; email: string; phone: string; password: string }) => {
+      const nextUser = await authRepository.register(input);
+      setUser(nextUser);
+      return nextUser;
+    },
+    [],
+  );
+
+  const recoverPassword = useCallback(async (email: string) => {
+    return authRepository.recoverPassword(email);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await authRepository.logout();
+    setUser(null);
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isLoading,
+      isAdmin: user?.role === 'admin',
+      adminHint: LOCAL_ADMIN_HINT,
+      login,
+      register,
+      recoverPassword,
+      logout,
+      refresh,
+    }),
+    [user, isLoading, login, register, recoverPassword, logout, refresh],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de AuthProvider.');
+  }
+  return context;
+}

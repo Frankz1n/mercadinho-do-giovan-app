@@ -1,0 +1,1 @@
+-- Dados fictícios serão adicionados somente quando o schema da Fase 1 existir.
