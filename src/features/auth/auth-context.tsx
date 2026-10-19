@@ -8,14 +8,14 @@ import {
   type ReactNode,
 } from 'react';
 
-import { authRepository, LOCAL_ADMIN_HINT } from '@/features/auth/data/auth-repository';
+import { authRepository } from '@/features/auth/data/auth-repository';
 import type { AppUser } from '@/features/auth/domain/auth';
+import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
   user: AppUser | null;
   isLoading: boolean;
   isAdmin: boolean;
-  adminHint: typeof LOCAL_ADMIN_HINT;
   login: (email: string, password: string) => Promise<AppUser>;
   register: (input: {
     name: string;
@@ -23,7 +23,7 @@ type AuthContextValue = {
     phone: string;
     password: string;
   }) => Promise<AppUser>;
-  recoverPassword: (email: string) => Promise<{ temporaryPassword: string }>;
+  recoverPassword: (email: string) => Promise<{ message: string }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -40,13 +40,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     void (async () => {
       try {
         await refresh();
+      } catch {
+        if (isMounted) {
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     })();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void refresh().catch(() => {
+        setUser(null);
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -78,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       isAdmin: user?.role === 'admin',
-      adminHint: LOCAL_ADMIN_HINT,
       login,
       register,
       recoverPassword,

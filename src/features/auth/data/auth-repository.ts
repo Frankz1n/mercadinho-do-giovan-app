@@ -1,105 +1,100 @@
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import type { AppUser, UserRole } from '@/features/auth/domain/auth';
+import { assertSupabaseConfigured, supabase } from '@/lib/supabase';
 
-import type { AppUser, Session, StoredUser } from '@/features/auth/domain/auth';
-import { hashSecret } from '@/lib/hash';
-import { readJson, writeJson } from '@/lib/storage';
+type ProfileRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  created_at: string;
+};
 
-const USERS_KEY = '@mercadinho/users';
-const SESSION_KEY = 'mercadinho.session';
-
-const ADMIN_EMAIL = 'giovan@mercadinho.local';
-const ADMIN_PASSWORD = 'giovan123';
-
-function toPublicUser(user: StoredUser): AppUser {
-  const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
-}
-
-async function readSession(): Promise<Session | null> {
-  try {
-    if (Platform.OS === 'web') {
-      return readJson<Session | null>(SESSION_KEY, null);
-    }
-
-    const raw = await SecureStore.getItemAsync(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function writeSession(session: Session | null): Promise<void> {
-  if (Platform.OS === 'web') {
-    if (!session) {
-      const { removeKey } = await import('@/lib/storage');
-      await removeKey(SESSION_KEY);
-      return;
-    }
-    await writeJson(SESSION_KEY, session);
-    return;
-  }
-
-  if (!session) {
-    await SecureStore.deleteItemAsync(SESSION_KEY);
-    return;
-  }
-
-  await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
-}
-
-async function ensureSeedUsers(): Promise<StoredUser[]> {
-  const users = await readJson<StoredUser[]>(USERS_KEY, []);
-  const hasAdmin = users.some((user) => user.email === ADMIN_EMAIL);
-
-  if (hasAdmin) {
-    return users;
-  }
-
-  const admin: StoredUser = {
-    id: 'user-admin-giovan',
-    name: 'Giovan',
-    email: ADMIN_EMAIL,
-    phone: '(11) 90000-0000',
-    role: 'admin',
-    passwordHash: await hashSecret(ADMIN_PASSWORD),
-    createdAt: new Date().toISOString(),
+function mapProfile(row: ProfileRow): AppUser {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    role: row.role,
+    createdAt: row.created_at,
   };
-  const nextUsers = [...users, admin];
-  await writeJson(USERS_KEY, nextUsers);
-  return nextUsers;
 }
 
 function normalizeEmail(email: string) {
   return email.trim().toLocaleLowerCase('pt-BR');
 }
 
+function authErrorMessage(error: { message: string; code?: string } | null, fallback: string) {
+  if (!error) {
+    return fallback;
+  }
+
+  const message = error.message.toLowerCase();
+  if (message.includes('invalid login credentials')) {
+    return 'E-mail ou senha incorretos.';
+  }
+  if (message.includes('user already registered') || message.includes('already been registered')) {
+    return 'Já existe uma conta com este e-mail.';
+  }
+  if (message.includes('email not confirmed')) {
+    return 'Confirme seu e-mail antes de entrar.';
+  }
+  return error.message || fallback;
+}
+
+async function fetchProfile(userId: string): Promise<AppUser | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, phone, role, created_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapProfile(data as ProfileRow) : null;
+}
+
 export class AuthRepository {
   async getCurrentUser(): Promise<AppUser | null> {
-    const users = await ensureSeedUsers();
-    const session = await readSession();
-    if (!session) {
+    assertSupabaseConfigured();
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!session?.user) {
       return null;
     }
 
-    const user = users.find((entry) => entry.id === session.userId);
-    return user ? toPublicUser(user) : null;
+    return fetchProfile(session.user.id);
   }
 
   async login(email: string, password: string): Promise<AppUser> {
-    const users = await ensureSeedUsers();
-    const normalizedEmail = normalizeEmail(email);
-    const passwordHash = await hashSecret(password);
-    const user = users.find(
-      (entry) => entry.email === normalizedEmail && entry.passwordHash === passwordHash,
-    );
+    assertSupabaseConfigured();
 
-    if (!user) {
-      throw new Error('E-mail ou senha incorretos.');
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizeEmail(email),
+      password,
+    });
+
+    if (error || !data.user) {
+      throw new Error(authErrorMessage(error, 'E-mail ou senha incorretos.'));
     }
 
-    await writeSession({ userId: user.id });
-    return toPublicUser(user);
+    const profile = await fetchProfile(data.user.id);
+    if (!profile) {
+      throw new Error('Perfil não encontrado. Tente novamente em instantes.');
+    }
+
+    return profile;
   }
 
   async register(input: {
@@ -108,56 +103,74 @@ export class AuthRepository {
     phone: string;
     password: string;
   }): Promise<AppUser> {
-    const users = await ensureSeedUsers();
-    const normalizedEmail = normalizeEmail(input.email);
+    assertSupabaseConfigured();
 
-    if (users.some((entry) => entry.email === normalizedEmail)) {
-      throw new Error('Já existe uma conta com este e-mail.');
+    const email = normalizeEmail(input.email);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: input.password,
+      options: {
+        data: {
+          name: input.name.trim(),
+          phone: input.phone.trim(),
+        },
+      },
+    });
+
+    if (error || !data.user) {
+      throw new Error(authErrorMessage(error, 'Não foi possível criar a conta.'));
     }
 
-    const user: StoredUser = {
-      id: `user-${Date.now()}`,
-      name: input.name.trim(),
-      email: normalizedEmail,
-      phone: input.phone.trim(),
-      role: 'customer',
-      passwordHash: await hashSecret(input.password),
-      createdAt: new Date().toISOString(),
-    };
+    if (!data.session) {
+      throw new Error(
+        'Conta criada. Confirme o e-mail (ou desative a confirmação no Supabase Auth) e faça login.',
+      );
+    }
 
-    await writeJson(USERS_KEY, [...users, user]);
-    await writeSession({ userId: user.id });
-    return toPublicUser(user);
+    // Garante telefone/nome no profile (trigger já criou a linha).
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        email,
+      })
+      .eq('id', data.user.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    const profile = await fetchProfile(data.user.id);
+    if (!profile) {
+      throw new Error('Conta criada, mas o perfil ainda não está disponível.');
+    }
+
+    return profile;
   }
 
-  async recoverPassword(email: string): Promise<{ temporaryPassword: string }> {
-    const users = await ensureSeedUsers();
-    const normalizedEmail = normalizeEmail(email);
-    const index = users.findIndex((entry) => entry.email === normalizedEmail);
+  async recoverPassword(email: string): Promise<{ message: string }> {
+    assertSupabaseConfigured();
 
-    if (index < 0) {
-      throw new Error('Não encontramos uma conta com este e-mail.');
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email));
+
+    if (error) {
+      throw new Error(authErrorMessage(error, 'Não foi possível enviar o e-mail de recuperação.'));
     }
 
-    const temporaryPassword = `temp${Math.floor(1000 + Math.random() * 9000)}`;
-    const nextUsers = [...users];
-    nextUsers[index] = {
-      ...nextUsers[index],
-      passwordHash: await hashSecret(temporaryPassword),
+    return {
+      message:
+        'Se existir uma conta com este e-mail, enviamos as instruções de recuperação.',
     };
-    await writeJson(USERS_KEY, nextUsers);
-
-    return { temporaryPassword };
   }
 
   async logout(): Promise<void> {
-    await writeSession(null);
+    assertSupabaseConfigured();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 }
 
 export const authRepository = new AuthRepository();
-
-export const LOCAL_ADMIN_HINT = {
-  email: ADMIN_EMAIL,
-  password: ADMIN_PASSWORD,
-};

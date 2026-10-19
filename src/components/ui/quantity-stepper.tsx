@@ -6,6 +6,8 @@ import { colors, minimumTouchTarget, radii, spacing, typography } from '@/theme'
 type QuantityStepperProps = {
   compact?: boolean;
   isAddDisabled?: boolean;
+  /** Contraste para fundos escuros (ex.: card de cesta). */
+  inverse?: boolean;
   onAdd: () => void;
   onDecrement: () => void;
   quantity: number;
@@ -13,24 +15,37 @@ type QuantityStepperProps = {
 
 export function QuantityStepper({
   compact = false,
+  inverse = false,
   isAddDisabled = false,
   onAdd,
   onDecrement,
   quantity,
 }: QuantityStepperProps) {
+  const iconColor = inverse ? colors.brand.deep : colors.brand.primary;
+
   return (
-    <View style={[styles.container, compact && styles.containerCompact]}>
+    <View
+      style={[
+        styles.container,
+        compact && styles.containerCompact,
+        inverse && styles.containerInverse,
+      ]}
+    >
       <Pressable
         accessibilityLabel="Diminuir quantidade"
         accessibilityRole="button"
         onPress={onDecrement}
         style={[styles.button, compact && styles.buttonCompact]}
       >
-        <Ionicons color={colors.brand.primary} name="remove" size={compact ? 16 : 20} />
+        <Ionicons color={iconColor} name="remove" size={compact ? 16 : 20} />
       </Pressable>
       <Text
         accessibilityLabel={`Quantidade ${quantity}`}
-        style={[styles.quantity, compact && styles.quantityCompact]}
+        style={[
+          styles.quantity,
+          compact && styles.quantityCompact,
+          inverse && styles.quantityInverse,
+        ]}
       >
         {quantity}
       </Text>
@@ -46,7 +61,7 @@ export function QuantityStepper({
           isAddDisabled && styles.disabled,
         ]}
       >
-        <Ionicons color={colors.brand.primary} name="add" size={compact ? 16 : 20} />
+        <Ionicons color={iconColor} name="add" size={compact ? 16 : 20} />
       </Pressable>
     </View>
   );
@@ -59,10 +74,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
-    flexShrink: 1,
+    flexShrink: 0,
   },
   containerCompact: {
+    alignSelf: 'stretch',
     borderRadius: radii.sm,
+    justifyContent: 'space-between',
+  },
+  containerInverse: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.brand.yellow,
+    borderColor: colors.brand.yellow,
+    justifyContent: 'space-between',
   },
   button: {
     alignItems: 'center',
@@ -71,8 +94,8 @@ const styles = StyleSheet.create({
     minWidth: minimumTouchTarget,
   },
   buttonCompact: {
-    minHeight: 32,
-    minWidth: 28,
+    minHeight: 36,
+    minWidth: 36,
   },
   disabled: {
     opacity: 0.35,
@@ -83,8 +106,12 @@ const styles = StyleSheet.create({
     minWidth: spacing.xl,
     textAlign: 'center',
   },
+  quantityInverse: {
+    color: colors.brand.deep,
+  },
   quantityCompact: {
-    fontSize: 13,
-    minWidth: 20,
+    flex: 1,
+    fontSize: 14,
+    minWidth: 24,
   },
 });

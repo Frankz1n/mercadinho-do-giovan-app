@@ -19,6 +19,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: 'br.com.mercadinhodogiovan.app',
     predictiveBackGestureEnabled: true,
+    // Obrigatório no Android para Expo Push (FCM). Sem este arquivo o token nunca é gerado.
+    googleServicesFile: './google-services.json',
   },
   web: {
     bundler: 'metro',
@@ -27,6 +29,24 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-sqlite',
+    [
+      'expo-notifications',
+      {
+        color: '#061C6C',
+        defaultChannel: 'default',
+      },
+    ],
+    [
+      'expo-image-picker',
+      {
+        cameraPermission:
+          'O Mercadinho do Giovan precisa da câmera para fotografar produtos.',
+        photosPermission:
+          'O Mercadinho do Giovan precisa da galeria para escolher fotos de produtos.',
+        microphonePermission: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {
@@ -49,5 +69,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
+  },
+  extra: {
+    eas: {
+      projectId:
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+        '2269064d-167b-4b82-80af-7937d63aef3d',
+    },
   },
 });

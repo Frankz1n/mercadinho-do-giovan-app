@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "278642745706",
+    "project_id": "app-giovan",
+    "storage_bucket": "app-giovan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:278642745706:android:be4baa75ed1c0f43a14513",
+        "android_client_info": {
+          "package_name": "br.com.mercadinhodogiovan.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZXn1j3J5lUvdj90sdRazPjYBQK2gBXUw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -15,8 +15,6 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const;
 
-const demoSalesByDay = [42, 55, 38, 92, 61, 48, 33];
-
 type MetricCardProps = {
   backgroundColor: string;
   icon: IoniconName;
@@ -74,7 +72,7 @@ export default function AdminOverviewScreen() {
   );
   const lowStockCount = products.filter((product) => product.stockQuantity <= 5).length;
 
-  const salesFromOrders = weekDays.map((_, index) => {
+  const salesByDay = weekDays.map((_, index) => {
     const count = completed.filter((order) => {
       const day = new Date(order.completedAt ?? order.createdAt).getDay();
       const mapped = day === 0 ? 6 : day - 1;
@@ -82,12 +80,10 @@ export default function AdminOverviewScreen() {
     }).length;
     return count;
   });
-  const hasRealSales = salesFromOrders.some((value) => value > 0);
-  const salesByDay = hasRealSales
-    ? salesFromOrders.map((value, index) => Math.max(value, demoSalesByDay[index] * 0.15))
-    : demoSalesByDay;
   const maxSales = Math.max(...salesByDay, 1);
-  const highlightIndex = salesByDay.indexOf(Math.max(...salesByDay));
+  const highlightIndex = salesByDay.some((value) => value > 0)
+    ? salesByDay.indexOf(Math.max(...salesByDay))
+    : -1;
 
   const soldByProductId = completed.reduce<Record<string, number>>((acc, order) => {
     for (const item of order.items) {
@@ -99,7 +95,7 @@ export default function AdminOverviewScreen() {
     return acc;
   }, {});
 
-  const topFromOrders = Object.entries(soldByProductId)
+  const topProducts = Object.entries(soldByProductId)
     .map(([productId, quantity]) => {
       const product = products.find((entry) => entry.id === productId);
       if (!product) {
@@ -113,15 +109,6 @@ export default function AdminOverviewScreen() {
     .sort((left, right) => right.quantity - left.quantity)
     .slice(0, 2);
 
-  const fallbackTop = products
-    .filter((product) => product.isFeatured)
-    .slice(0, 2)
-    .map((product, index) => ({
-      product,
-      quantity: index === 0 ? 52 : 37,
-    }));
-
-  const topProducts = topFromOrders.length >= 2 ? topFromOrders : fallbackTop;
   const firstName = user?.name?.split(' ')[0] ?? 'Giovan';
 
   return (
@@ -158,21 +145,21 @@ export default function AdminOverviewScreen() {
               icon="bar-chart-outline"
               iconColor={colors.brand.primary}
               label="Vendas"
-              value={formatCurrencyFromCents(revenueCents || 428000)}
+              value={formatCurrencyFromCents(revenueCents)}
             />
             <MetricCard
               backgroundColor="#E8EEFB"
               icon="bag-handle-outline"
               iconColor={colors.brand.primary}
               label="Pedidos"
-              value={String(orders.length || 48)}
+              value={String(orders.length)}
             />
             <MetricCard
               backgroundColor="#E8EEFB"
               icon="cube-outline"
               iconColor={colors.brand.primary}
               label="Itens vendidos"
-              value={String(itemsSold || 186)}
+              value={String(itemsSold)}
             />
             <MetricCard
               backgroundColor="#FFF4D6"
@@ -180,7 +167,7 @@ export default function AdminOverviewScreen() {
               iconColor={colors.warning}
               label="Estoque baixo"
               onPress={() => router.push('/admin/stock')}
-              value={String(lowStockCount || 6)}
+              value={String(lowStockCount)}
               valueColor={colors.danger}
             />
           </View>
@@ -198,7 +185,8 @@ export default function AdminOverviewScreen() {
                           index === highlightIndex
                             ? colors.brand.yellow
                             : colors.brand.primary,
-                        height: Math.max(14, (value / maxSales) * 100),
+                        height: Math.max(8, (value / maxSales) * 100),
+                        opacity: value === 0 ? 0.25 : 1,
                       },
                     ]}
                   />
@@ -210,23 +198,27 @@ export default function AdminOverviewScreen() {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mais vendidos</Text>
-            {topProducts.map(({ product, quantity }, index) => (
-              <View key={product.id} style={styles.topRow}>
-                <Text style={styles.topRank}>{index + 1}</Text>
-                <Image
-                  contentFit="cover"
-                  source={{ uri: product.imageUrl }}
-                  style={styles.topImage}
-                />
-                <View style={styles.topCopy}>
-                  <Text numberOfLines={1} style={styles.topName}>
-                    {product.name}
-                  </Text>
-                  <Text style={styles.topUnit}>{product.unitLabel}</Text>
+            {topProducts.length === 0 ? (
+              <Text style={styles.emptyCopy}>Ainda não há vendas baixadas.</Text>
+            ) : (
+              topProducts.map(({ product, quantity }, index) => (
+                <View key={product.id} style={styles.topRow}>
+                  <Text style={styles.topRank}>{index + 1}</Text>
+                  <Image
+                    contentFit="cover"
+                    source={{ uri: product.imageUrl }}
+                    style={styles.topImage}
+                  />
+                  <View style={styles.topCopy}>
+                    <Text numberOfLines={1} style={styles.topName}>
+                      {product.name}
+                    </Text>
+                    <Text style={styles.topUnit}>{product.unitLabel}</Text>
+                  </View>
+                  <Text style={styles.topQty}>{quantity} un</Text>
                 </View>
-                <Text style={styles.topQty}>{quantity} un</Text>
-              </View>
-            ))}
+              ))
+            )}
           </View>
 
           <Pressable
@@ -332,6 +324,11 @@ const styles = StyleSheet.create({
     color: colors.brand.deep,
     fontFamily: typography.brandSemibold,
     fontSize: 18,
+  },
+  emptyCopy: {
+    color: colors.text.secondary,
+    fontFamily: typography.interfaceRegular,
+    lineHeight: 20,
   },
   chart: {
     alignItems: 'flex-end',

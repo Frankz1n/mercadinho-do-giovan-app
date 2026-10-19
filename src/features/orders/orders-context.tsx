@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { useAuth } from '@/features/auth/auth-context';
 import type { AppUser } from '@/features/auth/domain/auth';
 import { ordersRepository } from '@/features/orders/data/orders-repository';
 import type { Order, OrderItem, OrderStatus } from '@/features/orders/domain/order';
@@ -15,6 +16,8 @@ import type { Order, OrderItem, OrderStatus } from '@/features/orders/domain/ord
 type OrdersContextValue = {
   orders: Order[];
   isLoading: boolean;
+  /** Pedidos novos na fila (aguardando separação) — badge do admin. */
+  newOrdersCount: number;
   refresh: () => Promise<void>;
   placeOrder: (input: {
     user: AppUser;
@@ -28,22 +31,40 @@ type OrdersContextValue = {
 const OrdersContext = createContext<OrdersContextValue | null>(null);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (!user) {
+      setOrders([]);
+      return;
+    }
+
     const nextOrders = await ordersRepository.listOrders();
     setOrders(nextOrders);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    let isMounted = true;
+
     void (async () => {
       try {
         await refresh();
+      } catch {
+        if (isMounted) {
+          setOrders([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [refresh]);
 
   const placeOrder = useCallback(
@@ -73,16 +94,22 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     [orders],
   );
 
+  const newOrdersCount = useMemo(
+    () => orders.filter((order) => order.status === 'awaiting_pickup').length,
+    [orders],
+  );
+
   const value = useMemo(
     () => ({
       orders,
       isLoading,
+      newOrdersCount,
       refresh,
       placeOrder,
       updateStatus,
       getById,
     }),
-    [orders, isLoading, refresh, placeOrder, updateStatus, getById],
+    [orders, isLoading, newOrdersCount, refresh, placeOrder, updateStatus, getById],
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;

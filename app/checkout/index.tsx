@@ -18,7 +18,7 @@ import {
   useBaskets,
   useProductsByIds,
 } from '@/features/catalog/data/catalog-queries';
-import { catalogRepository } from '@/features/catalog/data/local-catalog-repository';
+import { useToast } from '@/features/feedback/toast-context';
 import { buildStockAdjustmentsFromOrderItems } from '@/features/orders/build-stock-adjustments';
 import type { OrderItem } from '@/features/orders/domain/order';
 import { useOrders } from '@/features/orders/orders-context';
@@ -28,6 +28,7 @@ import { colors, radii, spacing, typography } from '@/theme';
 export default function CheckoutScreen() {
   const { user } = useAuth();
   const { placeOrder } = useOrders();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const { clearCart, isPending, resolvedItems, subtotalCents } = useResolvedCart();
   const [notes, setNotes] = useState('');
@@ -98,13 +99,14 @@ export default function CheckoutScreen() {
         }
       }
 
-      await catalogRepository.applyStockAdjustments(adjustments);
+      // Estoque + pedido são atômicos no RPC place_order no Supabase.
       const order = await placeOrder({
         user,
         items: orderItems,
         notes,
       });
       clearCart();
+      showToast(`Pedido feito · código ${order.code}`, 'success');
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
       router.replace({
         pathname: '/orders/[id]',

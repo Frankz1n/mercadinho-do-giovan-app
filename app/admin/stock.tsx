@@ -21,22 +21,27 @@ import {
   StoreMessage,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
-import { catalogQueryKeys, useProducts } from '@/features/catalog/data/catalog-queries';
-import { catalogRepository } from '@/features/catalog/data/local-catalog-repository';
+import {
+  catalogQueryKeys,
+  useAdminProducts,
+} from '@/features/catalog/data/catalog-queries';
+import { catalogRepository } from '@/features/catalog/data/supabase-catalog-repository';
 import type { Product } from '@/features/catalog/domain/catalog';
+import { useToast } from '@/features/feedback/toast-context';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 
 export default function AdminStockScreen() {
   const { user, isAdmin, isLoading: isAuthLoading } = useAuth();
+  const { showToast } = useToast();
   const [search, setSearch] = useState('');
   const [filterLow, setFilterLow] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
   const [delta, setDelta] = useState('10');
   const [isEntryMode, setIsEntryMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
-  const productsQuery = useProducts({ search });
-  const products =
-    productsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const productsQuery = useAdminProducts(search);
+  const products = productsQuery.data ?? [];
   const visible = filterLow
     ? products.filter((product) => product.stockQuantity <= 5)
     : products;
@@ -65,13 +70,33 @@ export default function AdminStockScreen() {
       Alert.alert('Na entrada de estoque, use um valor positivo.');
       return;
     }
-    await catalogRepository.applyStockAdjustments([
-      { productId: selected.id, quantityDelta },
-    ]);
-    await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
-    setSelected(null);
-    setDelta('10');
-    setIsEntryMode(false);
+
+    setIsSaving(true);
+    try {
+      await catalogRepository.applyStockAdjustments([
+        { productId: selected.id, quantityDelta },
+      ]);
+      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
+      await productsQuery.refetch();
+      showToast(
+        isEntryMode
+          ? `Entrada de ${quantityDelta} un · ${selected.name}`
+          : `Estoque atualizado · ${selected.name}`,
+        'success',
+      );
+      setSelected(null);
+      setDelta('10');
+      setIsEntryMode(false);
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível salvar',
+        error instanceof Error
+          ? error.message
+          : 'Verifique se sua conta é admin e se a migration do banco foi aplicada.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -99,7 +124,7 @@ export default function AdminStockScreen() {
           style={[styles.chip, !filterLow && styles.chipActive]}
         >
           <Text style={[styles.chipText, !filterLow && styles.chipTextActive]}>
-            Todos
+            Todos · {products.length}
           </Text>
         </Pressable>
         <Pressable
@@ -122,10 +147,19 @@ export default function AdminStockScreen() {
         <StoreLoadingState />
       ) : productsQuery.isError ? (
         <StoreMessage
-          description="Não foi possível carregar o estoque."
+          description={
+            productsQuery.error instanceof Error
+              ? productsQuery.error.message
+              : 'Não foi possível carregar o estoque.'
+          }
           onRetry={() => void productsQuery.refetch()}
           title="Falha ao carregar"
           variant="error"
+        />
+      ) : visible.length === 0 ? (
+        <StoreMessage
+          description="Cadastre um produto ou limpe a busca."
+          title="Nenhum produto"
         />
       ) : (
         <View style={styles.list}>
@@ -181,16 +215,6 @@ export default function AdminStockScreen() {
               </View>
             );
           })}
-          {productsQuery.hasNextPage ? (
-            <AppButton
-              disabled={productsQuery.isFetchingNextPage}
-              label={
-                productsQuery.isFetchingNextPage ? 'Carregando…' : 'Carregar mais'
-              }
-              onPress={() => void productsQuery.fetchNextPage()}
-              variant="secondary"
-            />
-          ) : null}
         </View>
       )}
 
@@ -225,7 +249,7 @@ export default function AdminStockScreen() {
             <Text style={styles.modalProduct}>{selected?.name}</Text>
             {isEntryMode && visible.length > 1 ? (
               <View style={styles.productPicker}>
-                {visible.slice(0, 6).map((product) => (
+                {visible.slice(0, 8).map((product) => (
                   <Pressable
                     key={product.id}
                     onPress={() => openAdjust(product, true)}
@@ -253,16 +277,25 @@ export default function AdminStockScreen() {
                 : 'Use número positivo para entrada e negativo para saída.'}
             </Text>
             <TextInput
+              editable={!isSaving}
               keyboardType="number-pad"
               onChangeText={setDelta}
               style={styles.modalInput}
               value={delta}
             />
             <AppButton
-              label={isEntryMode ? 'Confirmar entrada' : 'Salvar ajuste'}
+              disabled={isSaving}
+              label={
+                isSaving
+                  ? 'Salvando…'
+                  : isEntryMode
+                    ? 'Confirmar entrada'
+                    : 'Salvar ajuste'
+              }
               onPress={() => void applyAdjustment()}
             />
             <AppButton
+              disabled={isSaving}
               label="Cancelar"
               onPress={() => {
                 setSelected(null);

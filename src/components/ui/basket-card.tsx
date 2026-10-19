@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
@@ -35,6 +36,8 @@ export function BasketCard({
   products,
   quantity,
 }: BasketCardProps) {
+  const [isItemsVisible, setIsItemsVisible] = useState(false);
+
   const isAvailable = basket.components.every((component) => {
     const product = products.get(component.productId);
     return product && product.stockQuantity >= component.quantity;
@@ -62,9 +65,36 @@ export function BasketCard({
           ))}
         </View>
 
-        <Pressable style={styles.seeItems}>
-          <Text style={styles.seeItemsText}>Ver itens da cesta</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setIsItemsVisible((current) => !current)}
+          style={styles.seeItems}
+        >
+          <Text style={styles.seeItemsText}>
+            {isItemsVisible ? 'Ocultar itens da cesta' : 'Ver itens da cesta'}
+          </Text>
+          <Ionicons
+            color={colors.text.inverse}
+            name={isItemsVisible ? 'chevron-up' : 'chevron-down'}
+            size={16}
+          />
         </Pressable>
+
+        {isItemsVisible ? (
+          <View style={styles.itemsList}>
+            {basket.components.map((component) => {
+              const product = products.get(component.productId);
+              return (
+                <View key={component.productId} style={styles.itemRow}>
+                  <Text style={styles.itemName}>
+                    {product?.name ?? component.productId}
+                  </Text>
+                  <Text style={styles.itemQty}>{component.quantity} un</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
 
         {!isAvailable ? (
           <Text style={styles.unavailable}>
@@ -74,6 +104,7 @@ export function BasketCard({
 
         {quantity > 0 ? (
           <QuantityStepper
+            inverse
             isAddDisabled={!isAvailable}
             onAdd={onAdd}
             onDecrement={onDecrement}
@@ -141,16 +172,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   seeItems: {
+    alignItems: 'center',
     alignSelf: 'flex-start',
     borderColor: 'rgba(255,255,255,0.45)',
     borderRadius: radii.md,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   seeItemsText: {
     color: colors.text.inverse,
     fontFamily: typography.interfaceMedium,
+    fontSize: 13,
+  },
+  itemsList: {
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: radii.md,
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  itemRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  itemName: {
+    color: colors.text.inverse,
+    flex: 1,
+    fontFamily: typography.interfaceRegular,
+    fontSize: 13,
+  },
+  itemQty: {
+    color: colors.brand.yellow,
+    fontFamily: typography.interfaceSemibold,
     fontSize: 13,
   },
   unavailable: {

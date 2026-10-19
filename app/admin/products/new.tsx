@@ -9,13 +9,21 @@ import {
   StoreLoadingState,
   TextField,
 } from '@/components/ui';
+import { ProductPhotoField } from '@/components/ui/product-photo-field';
 import { useAuth } from '@/features/auth/auth-context';
 import { catalogQueryKeys, useCategories } from '@/features/catalog/data/catalog-queries';
-import { catalogRepository } from '@/features/catalog/data/local-catalog-repository';
+import type { PickedProductImage } from '@/features/catalog/data/product-image-upload';
+import { uploadProductImage } from '@/features/catalog/data/product-image-upload';
+import { catalogRepository } from '@/features/catalog/data/supabase-catalog-repository';
+import { useToast } from '@/features/feedback/toast-context';
 import { colors, radii, spacing, typography } from '@/theme';
+
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80';
 
 export default function AdminNewProductScreen() {
   const { user, isAdmin, isLoading } = useAuth();
+  const { showToast } = useToast();
   const categoriesQuery = useCategories();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -23,6 +31,7 @@ export default function AdminNewProductScreen() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('0');
   const [categoryId, setCategoryId] = useState('pantry');
+  const [pickedImage, setPickedImage] = useState<PickedProductImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -54,6 +63,21 @@ export default function AdminNewProductScreen() {
     setIsSaving(true);
     try {
       const category = categoriesQuery.data?.find((entry) => entry.id === categoryId);
+      const productKey = name
+        .trim()
+        .toLocaleLowerCase('pt-BR')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40);
+
+      let imageUrl = FALLBACK_IMAGE;
+      if (pickedImage) {
+        imageUrl = await uploadProductImage(
+          pickedImage,
+          productKey || `product-${Date.now()}`,
+        );
+      }
+
       await catalogRepository.upsertProduct({
         categoryId,
         name,
@@ -63,10 +87,10 @@ export default function AdminNewProductScreen() {
         stockQuantity,
         isFeatured: false,
         visual: category?.visual ?? 'rice',
-        imageUrl:
-          'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+        imageUrl,
       });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
+      showToast('Produto cadastrado', 'success');
       router.replace('/admin/stock');
     } catch (saveError) {
       setError(
@@ -83,10 +107,10 @@ export default function AdminNewProductScreen() {
         Novo produto
       </Text>
 
-      <View style={styles.photoBox}>
-        <Text style={styles.photoText}>Adicionar foto do produto</Text>
-        <Text style={styles.photoHint}>Foto padrão por enquanto</Text>
-      </View>
+      <ProductPhotoField
+        imageUri={pickedImage?.uri ?? null}
+        onChange={setPickedImage}
+      />
 
       <TextField label="Nome" onChangeText={setName} placeholder="Ex.: Arroz 5 kg" value={name} />
       <Text style={styles.label}>Categoria</Text>
@@ -153,26 +177,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: typography.brandSemibold,
     fontSize: 25,
-  },
-  photoBox: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderStyle: 'dashed',
-    borderWidth: 1.5,
-    gap: spacing.xxs,
-    justifyContent: 'center',
-    minHeight: 140,
-    padding: spacing.md,
-  },
-  photoText: {
-    color: colors.brand.primary,
-    fontFamily: typography.interfaceSemibold,
-  },
-  photoHint: {
-    color: colors.text.secondary,
-    fontFamily: typography.interfaceRegular,
-    fontSize: 12,
   },
   label: {
     color: colors.text.primary,

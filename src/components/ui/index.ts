@@ -8,6 +8,7 @@ export * from './cart-item-row';
 export * from './category-chip';
 export * from './product-card';
 export * from './product-visual';
+
 export * from './quantity-stepper';
 export * from './screen';
 export * from './search-field';

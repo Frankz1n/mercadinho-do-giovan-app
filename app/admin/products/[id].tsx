@@ -11,19 +11,24 @@ import {
   StoreMessage,
   TextField,
 } from '@/components/ui';
+import { ProductPhotoField } from '@/components/ui/product-photo-field';
 import { useAuth } from '@/features/auth/auth-context';
 import {
   catalogQueryKeys,
   useCategories,
   useProduct,
 } from '@/features/catalog/data/catalog-queries';
-import { catalogRepository } from '@/features/catalog/data/local-catalog-repository';
+import type { PickedProductImage } from '@/features/catalog/data/product-image-upload';
+import { uploadProductImage } from '@/features/catalog/data/product-image-upload';
+import { catalogRepository } from '@/features/catalog/data/supabase-catalog-repository';
 import type { Product } from '@/features/catalog/domain/catalog';
+import { useToast } from '@/features/feedback/toast-context';
 import { colors, radii, spacing, typography } from '@/theme';
 
 function EditProductForm({ product }: { product: Product }) {
   const categoriesQuery = useCategories();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [name, setName] = useState(product.name);
   const [unitLabel, setUnitLabel] = useState(product.unitLabel);
   const [price, setPrice] = useState(
@@ -32,9 +37,12 @@ function EditProductForm({ product }: { product: Product }) {
   const [stock, setStock] = useState(String(product.stockQuantity));
   const [categoryId, setCategoryId] = useState(product.categoryId);
   const [isAvailable, setIsAvailable] = useState(product.stockQuantity > 0);
+  const [pickedImage, setPickedImage] = useState<PickedProductImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
+  const previewUri = pickedImage?.uri ?? product.imageUrl;
 
   const onSave = async () => {
     setError(null);
@@ -44,10 +52,19 @@ function EditProductForm({ product }: { product: Product }) {
       setError('Preencha nome, unidade e preço válidos.');
       return;
     }
+    if (Number.isNaN(stockQuantity) || stockQuantity < 0) {
+      setError('Informe um estoque válido.');
+      return;
+    }
 
     setIsSaving(true);
     try {
       const category = categoriesQuery.data?.find((entry) => entry.id === categoryId);
+      let imageUrl = product.imageUrl;
+      if (pickedImage) {
+        imageUrl = await uploadProductImage(pickedImage, product.id);
+      }
+
       await catalogRepository.upsertProduct({
         id: product.id,
         categoryId,
@@ -58,9 +75,10 @@ function EditProductForm({ product }: { product: Product }) {
         stockQuantity: isAvailable ? Math.max(0, stockQuantity) : 0,
         isFeatured: product.isFeatured,
         visual: category?.visual ?? product.visual,
-        imageUrl: product.imageUrl,
+        imageUrl,
       });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
+      showToast('Produto atualizado', 'success');
       router.replace('/admin/stock');
     } catch (saveError) {
       setError(
@@ -72,10 +90,20 @@ function EditProductForm({ product }: { product: Product }) {
   };
 
   const onDelete = async () => {
-    await catalogRepository.removeProduct(product.id);
-    await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
-    setShowDelete(false);
-    router.replace('/admin/stock');
+    try {
+      await catalogRepository.removeProduct(product.id);
+      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.all });
+      setShowDelete(false);
+      showToast('Produto removido', 'success');
+      router.replace('/admin/stock');
+    } catch (deleteError) {
+      setShowDelete(false);
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : 'Não foi possível remover o produto.',
+      );
+    }
   };
 
   return (
@@ -83,6 +111,8 @@ function EditProductForm({ product }: { product: Product }) {
       <Text accessibilityRole="header" style={styles.title}>
         Editar produto
       </Text>
+
+      <ProductPhotoField imageUri={previewUri} onChange={setPickedImage} />
 
       <TextField label="Nome" onChangeText={setName} value={name} />
       <Text style={styles.label}>Categoria</Text>

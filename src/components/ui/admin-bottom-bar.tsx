@@ -5,6 +5,7 @@ import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useOrders } from '@/features/orders/orders-context';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -29,6 +30,7 @@ const items: {
 export function AdminBottomBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { newOrdersCount } = useOrders();
 
   return (
     <View
@@ -40,10 +42,15 @@ export function AdminBottomBar() {
             item.match === '/admin'
               ? pathname === '/admin' || pathname.endsWith('/admin')
               : pathname.includes(item.match);
+          const showOrdersBadge = item.match === '/admin/orders' && newOrdersCount > 0;
 
           return (
             <Pressable
-              accessibilityLabel={item.label}
+              accessibilityLabel={
+                showOrdersBadge
+                  ? `${item.label}, ${newOrdersCount} novos`
+                  : item.label
+              }
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
               key={item.label}
@@ -56,6 +63,13 @@ export function AdminBottomBar() {
                   name={item.icon}
                   size={22}
                 />
+                {showOrdersBadge ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {Math.min(newOrdersCount, 99)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <Text style={[styles.label, isActive && styles.activeLabel]}>{item.label}</Text>
             </Pressable>
@@ -97,10 +111,28 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     height: 40,
     justifyContent: 'center',
+    position: 'relative',
     width: 40,
   },
   iconWrapActive: {
     backgroundColor: colors.brand.yellow,
+  },
+  badge: {
+    alignItems: 'center',
+    backgroundColor: colors.danger,
+    borderRadius: radii.pill,
+    height: 17,
+    justifyContent: 'center',
+    minWidth: 17,
+    paddingHorizontal: 4,
+    position: 'absolute',
+    right: -2,
+    top: -2,
+  },
+  badgeText: {
+    color: colors.text.inverse,
+    fontFamily: typography.interfaceSemibold,
+    fontSize: 9,
   },
   label: {
     color: colors.text.secondary,

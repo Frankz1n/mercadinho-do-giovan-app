@@ -16,6 +16,7 @@ import { colors, radii, shadows, spacing, typography } from '@/theme';
 
 const filters: { label: string; value: OrderStatus | 'all' }[] = [
   { label: 'Fila', value: 'awaiting_pickup' },
+  { label: 'Prontos', value: 'ready_for_pickup' },
   { label: 'Baixados', value: 'completed' },
   { label: 'Todos', value: 'all' },
 ];
@@ -34,16 +35,16 @@ export default function AdminOrdersScreen() {
   const visibleOrders =
     filter === 'all' ? orders : orders.filter((order) => order.status === filter);
 
-  const onComplete = async (orderId: string) => {
+  const onUpdate = async (orderId: string, status: OrderStatus) => {
     setError(null);
     setBusyId(orderId);
     try {
-      await updateStatus(orderId, 'completed');
-    } catch (completeError) {
+      await updateStatus(orderId, status);
+    } catch (updateError) {
       setError(
-        completeError instanceof Error
-          ? completeError.message
-          : 'Não foi possível dar baixa.',
+        updateError instanceof Error
+          ? updateError.message
+          : 'Não foi possível atualizar o pedido.',
       );
     } finally {
       setBusyId(null);
@@ -56,7 +57,7 @@ export default function AdminOrdersScreen() {
         Fila de retirada
       </Text>
       <Text style={styles.subtitle}>
-        Confira o código com o cliente, receba o pagamento e dê baixa no pedido.
+        Separe o pedido, avise o cliente e dê baixa quando receber o pagamento.
       </Text>
 
       <View style={styles.filters}>
@@ -120,10 +121,22 @@ export default function AdminOrdersScreen() {
                   disabled={busyId === order.id}
                   label={
                     busyId === order.id
+                      ? 'Separando…'
+                      : 'Pedido separado · pronto para retirada'
+                  }
+                  onPress={() => void onUpdate(order.id, 'ready_for_pickup')}
+                />
+              ) : null}
+
+              {order.status === 'ready_for_pickup' ? (
+                <AppButton
+                  disabled={busyId === order.id}
+                  label={
+                    busyId === order.id
                       ? 'Baixando…'
                       : 'Recebi o pagamento · dar baixa'
                   }
-                  onPress={() => void onComplete(order.id)}
+                  onPress={() => void onUpdate(order.id, 'completed')}
                 />
               ) : null}
             </View>

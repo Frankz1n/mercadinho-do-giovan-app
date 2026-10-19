@@ -14,6 +14,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/features/auth/auth-context';
 import { CartProvider } from '@/features/cart/cart-context';
+import { ToastProvider } from '@/features/feedback/toast-context';
+import { NotificationsProvider } from '@/features/notifications/notifications-provider';
 import { OrdersProvider } from '@/features/orders/orders-context';
 import { colors } from '@/theme';
 
@@ -58,18 +60,22 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <OrdersProvider>
-            <CartProvider>
-              <StatusBar style="light" />
-              <Stack
-                screenOptions={{
-                  animation: 'slide_from_right',
-                  contentStyle: { backgroundColor: colors.background },
-                  headerShown: false,
-                }}
-              />
-            </CartProvider>
-          </OrdersProvider>
+          <ToastProvider>
+            <OrdersProvider>
+              <CartProvider>
+                <NotificationsProvider>
+                  <StatusBar style="light" />
+                  <Stack
+                    screenOptions={{
+                      animation: 'slide_from_right',
+                      contentStyle: { backgroundColor: colors.background },
+                      headerShown: false,
+                    }}
+                  />
+                </NotificationsProvider>
+              </CartProvider>
+            </OrdersProvider>
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

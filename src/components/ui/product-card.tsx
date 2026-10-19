@@ -34,11 +34,9 @@ export function ProductCard({
         <Text style={styles.unit}>{product.unitLabel}</Text>
       </Pressable>
 
-      <View style={styles.footer}>
-        <Text numberOfLines={1} style={styles.price}>
-          {formatCurrencyFromCents(product.priceCents)}
-        </Text>
-        {quantity > 0 ? (
+      {quantity > 0 ? (
+        <View style={styles.footerStacked}>
+          <Text style={styles.price}>{formatCurrencyFromCents(product.priceCents)}</Text>
           <QuantityStepper
             compact
             isAddDisabled={quantity >= product.stockQuantity}
@@ -46,7 +44,10 @@ export function ProductCard({
             onDecrement={onDecrement}
             quantity={quantity}
           />
-        ) : (
+        </View>
+      ) : (
+        <View style={styles.footerRow}>
+          <Text style={styles.price}>{formatCurrencyFromCents(product.priceCents)}</Text>
           <Pressable
             accessibilityLabel={`Adicionar ${product.name}`}
             accessibilityRole="button"
@@ -57,8 +58,8 @@ export function ProductCard({
           >
             <Ionicons color={colors.brand.deep} name="add" size={22} />
           </Pressable>
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -86,15 +87,18 @@ const styles = StyleSheet.create({
     fontFamily: typography.interfaceRegular,
     fontSize: 12,
   },
-  footer: {
+  footerRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.xs,
     justifyContent: 'space-between',
+    minHeight: 36,
+  },
+  footerStacked: {
+    gap: spacing.xs,
   },
   price: {
     color: colors.brand.deep,
-    flexShrink: 1,
     fontFamily: typography.interfaceSemibold,
     fontSize: 15,
   },

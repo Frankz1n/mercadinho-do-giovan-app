@@ -17,7 +17,7 @@ type FormValues = z.infer<typeof schema>;
 export default function RecoverScreen() {
   const { recoverPassword } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
-  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -29,10 +29,10 @@ export default function RecoverScreen() {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    setTemporaryPassword(null);
+    setSuccessMessage(null);
     try {
       const result = await recoverPassword(values.email);
-      setTemporaryPassword(result.temporaryPassword);
+      setSuccessMessage(result.message);
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : 'Não foi possível recuperar a senha.',
@@ -43,7 +43,7 @@ export default function RecoverScreen() {
   return (
     <AuthShell headline="Vamos te ajudar a voltar" title="Recuperar senha">
       <Text style={styles.subtitle}>
-        Informe o e-mail da conta. Em modo local, geramos uma senha temporária.
+        Informe o e-mail da conta. Enviaremos um link de redefinição pelo Supabase Auth.
       </Text>
 
       <Controller
@@ -65,16 +65,16 @@ export default function RecoverScreen() {
 
       {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
-      {temporaryPassword ? (
+      {successMessage ? (
         <View style={styles.result}>
-          <Text style={styles.resultTitle}>Senha temporária</Text>
-          <Text style={styles.resultCode}>{temporaryPassword}</Text>
+          <Text style={styles.resultTitle}>E-mail enviado</Text>
+          <Text style={styles.resultBody}>{successMessage}</Text>
         </View>
       ) : null}
 
       <AppButton
         disabled={isSubmitting}
-        label={isSubmitting ? 'Gerando…' : 'Enviar'}
+        label={isSubmitting ? 'Enviando…' : 'Enviar'}
         onPress={() => void onSubmit()}
       />
       <AppButton href="/(auth)/login" label="Voltar ao login" variant="secondary" />
@@ -104,10 +104,9 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: typography.interfaceSemibold,
   },
-  resultCode: {
-    color: colors.brand.deep,
-    fontFamily: typography.brandSemibold,
-    fontSize: 28,
-    letterSpacing: 1,
+  resultBody: {
+    color: colors.text.secondary,
+    fontFamily: typography.interfaceRegular,
+    lineHeight: 20,
   },
 });

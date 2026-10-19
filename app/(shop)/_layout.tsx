@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ShopBottomBar } from '@/components/ui';
+import { ShopBottomBar } from '@/components/ui/shop-bottom-bar';
 
 export default function ShopLayout() {
   return (

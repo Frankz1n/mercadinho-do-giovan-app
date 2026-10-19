@@ -1,0 +1,21 @@
+# Config mínima para `supabase db` / CLI local.
+# Projeto hospedado: aplique migrations pelo SQL Editor ou `supabase db push`.
+
+[project]
+id = "mercadinho-do-giovan"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+enabled = true
+port = 54321
+
+[auth]
+enabled = true
+site_url = "mercadinhogiovan://"
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false

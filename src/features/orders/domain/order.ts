@@ -1,4 +1,8 @@
-export type OrderStatus = 'awaiting_pickup' | 'completed' | 'cancelled';
+export type OrderStatus =
+  | 'awaiting_pickup'
+  | 'ready_for_pickup'
+  | 'completed'
+  | 'cancelled';
 
 export type OrderItem = Readonly<{
   id: string;
@@ -27,7 +31,8 @@ export type Order = Readonly<{
 }>;
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  awaiting_pickup: 'Aguardando retirada',
+  awaiting_pickup: 'Aguardando separação',
+  ready_for_pickup: 'Pronto para retirada',
   completed: 'Pago e retirado',
   cancelled: 'Cancelado',
 };

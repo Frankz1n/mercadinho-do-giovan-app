@@ -34,6 +34,19 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Firebase / FCM (chave privada — nunca commitar)
+*-firebase-adminsdk-*.json
+firebase-service-account*.json
+App_Giovan_Firebase_Config.json
+
+# Credenciais de assinatura Android (senhas do keystore)
+credentials.json
+credentials/
+
+# Ferramentas locais / cache Supabase CLI
+.claude/
+supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 

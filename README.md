@@ -1,37 +1,64 @@
 # Mercadinho do Giovan
 
-App Android de compras com React Native, Expo Router e TypeScript. Catálogo, auth,
-carrinho e pedidos funcionam localmente (sem Supabase ainda). Não há pagamento no app:
-o cliente fecha o pedido, recebe um código e paga na retirada.
+App Android de compras com React Native, Expo Router, TypeScript e **Supabase**
+(Auth + Postgres + RLS). Não há pagamento no app: o cliente fecha o pedido, recebe
+um código (`MG-XXXXXX`) e paga na retirada.
 
-## Versões aprovadas
+## Versões
 
-- Expo SDK `57.0.30`
-- React Native `0.86.3`
-- React `19.2.3`
-- Android `compileSdkVersion 36` e `targetSdkVersion 36`
-- Node.js `>= 20.19.4`
+- Expo SDK `57`
+- React Native `0.86`
+- `@supabase/supabase-js` + `expo-sqlite` (sessão)
 
-## Executar
+## Setup rápido
+
+### 1. Variáveis de ambiente
 
 ```bash
 cp .env.example .env.local
+```
+
+Preencha no [Dashboard Supabase](https://supabase.com/dashboard) → Project Settings → API:
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (publishable ou anon key)
+
+Ou, com EAS: `npx eas-cli integrations:supabase:connect`
+
+### 2. Banco (migration + seed)
+
+No SQL Editor do projeto (ou `supabase db push` + seed):
+
+1. Rode `supabase/migrations/20260318120000_init_schema.sql`
+2. Rode `supabase/seed.sql` (categorias, produtos, cestas)
+
+Em **Authentication → Providers → Email**, desative “Confirm email” em desenvolvimento
+para o `signUp` já retornar sessão.
+
+### 3. Conta admin
+
+1. Cadastre-se pelo app.
+2. No SQL Editor:
+
+```sql
+update public.profiles
+set role = 'admin'
+where email = 'seu@email.com';
+```
+
+### 4. App
+
+```bash
 npm ci
 npm start
 ```
 
-## Fluxo do pedido (sem pagamento online)
+## Fluxo do pedido
 
-1. Cliente escolhe produtos/cestas e adiciona ao carrinho.
-2. No checkout, com login, fecha o pedido e recebe um código único (`MG-XXXXXX`).
-3. O pedido aparece na fila do painel admin com todos os itens.
-4. Cliente retira no mercado; Giovan recebe o pagamento e dá baixa no sistema.
-5. O estoque é reduzido ao fechar o pedido (ajuste local).
-
-### Conta admin local
-
-- E-mail: `giovan@mercadinho.local`
-- Senha: `giovan123`
+1. Cliente monta o carrinho e faz checkout autenticado.
+2. RPC `place_order` cria o pedido, gera o código e baixa o estoque de forma atômica.
+3. Pedido entra na fila admin (`awaiting_pickup`).
+4. Na retirada, Giovan dá baixa (`completed`).
 
 ## Qualidade
 
@@ -42,25 +69,30 @@ npm run check
 npm run doctor
 ```
 
-## Dados locais
-
-- Catálogo: `src/features/catalog/data/local-catalog-repository.ts` (imagens remotas).
-- Auth/sessão: AsyncStorage + SecureStore (`src/features/auth`).
-- Pedidos: AsyncStorage (`src/features/orders`).
-- Carrinho: só IDs/quantidades no AsyncStorage; preço/nome resolvidos pelo catálogo.
-
-Backend Supabase (migrations, RLS, RPC) fica para a próxima fase.
-
 ## Estrutura
 
-- `app/`: rotas Expo Router (loja, auth, checkout, pedidos, admin).
-- `src/components/ui/`: componentes compartilhados.
-- `src/features/`: auth, cart, catalog, orders.
-- `src/lib/`: utilitários.
-- `src/theme/`: tokens visuais.
+- `app/` — rotas (loja, auth, checkout, pedidos, admin)
+- `src/features/` — auth, cart, catalog, orders (repositórios Supabase)
+- `src/lib/supabase.ts` — cliente
+- `supabase/migrations/` — schema, RLS, RPCs
+- `supabase/seed.sql` — catálogo inicial
+
+## Notificações
+
+- Toasts in-app (carrinho, pedido, fila admin via Realtime).
+- Push remoto (`expo-notifications` + Edge Function `send-push`): novo pedido → admins; pedido pronto → cliente; queda de preço → clientes.
+- Rode a migration `20260318140000_notifications.sql` e faça deploy de `supabase/functions/send-push`.
+- Push no Android exige **development build** (não Expo Go). Defina `EXPO_PUBLIC_EAS_PROJECT_ID`.
+
+## Estoque / fotos de produto
+
+- Ajuste e edição salvam no Supabase (`adjust_stock` / `upsertProduct`).
+- Fotos via câmera/galeria (`expo-image-picker`) → bucket Storage `product-images`.
+- Rode também `supabase/migrations/20260319120000_product_images_storage.sql`.
+- Câmera exige development build atualizado (plugin no `app.config.ts`).
 
 ## Pendências
 
-- Ícone 1024×1024 e adaptive icon finais para a Play Store.
-- Projetos Supabase (dev/homolog/prod) e EAS.
-- Validação em aparelho Android e build release.
+- Ícones finais da Play Store
+- EAS Build / submit + credenciais FCM
+- Validação em aparelho Android

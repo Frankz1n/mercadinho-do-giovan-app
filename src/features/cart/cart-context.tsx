@@ -13,6 +13,7 @@ import type {
   CartItemKind,
   CartItemReference,
 } from '@/features/catalog/domain/catalog';
+import { useToast } from '@/features/feedback/toast-context';
 
 const CART_STORAGE_KEY = 'mercadinho-giovan:cart:v1';
 const MAX_ITEM_QUANTITY = 20;
@@ -135,6 +136,7 @@ function parseStoredCart(value: string | null): readonly CartItemReference[] {
 }
 
 export function CartProvider({ children }: PropsWithChildren) {
+  const { showToast } = useToast();
   const [state, dispatch] = useReducer(cartReducer, {
     isHydrated: false,
     items: [],
@@ -154,9 +156,16 @@ export function CartProvider({ children }: PropsWithChildren) {
     void AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
   }, [state.isHydrated, state.items]);
 
-  const addItem = useCallback((kind: CartItemKind, id: string) => {
-    dispatch({ type: 'add', id, kind });
-  }, []);
+  const addItem = useCallback(
+    (kind: CartItemKind, id: string) => {
+      dispatch({ type: 'add', id, kind });
+      showToast(
+        kind === 'basket' ? 'Cesta adicionada ao carrinho' : 'Produto adicionado ao carrinho',
+        'success',
+      );
+    },
+    [showToast],
+  );
   const decrementItem = useCallback((kind: CartItemKind, id: string) => {
     dispatch({ type: 'decrement', id, kind });
   }, []);

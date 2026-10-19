@@ -8,12 +8,3 @@ export type AppUser = Readonly<{
   role: UserRole;
   createdAt: string;
 }>;
-
-export type StoredUser = AppUser &
-  Readonly<{
-    passwordHash: string;
-  }>;
-
-export type Session = Readonly<{
-  userId: string;
-}>;
