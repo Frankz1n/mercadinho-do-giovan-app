@@ -55,7 +55,10 @@ export default function CheckoutScreen() {
     setError(null);
 
     if (!user) {
-      router.push('/(auth)/login');
+      router.push({
+        pathname: '/(auth)/login',
+        params: { returnTo: '/checkout' },
+      });
       return;
     }
 
@@ -175,6 +178,7 @@ export default function CheckoutScreen() {
           <TextField
             autoCapitalize="sentences"
             label="Observação (opcional)"
+            maxLength={500}
             onChangeText={setNotes}
             placeholder="Ex.: sem cebola na cesta"
             value={notes}

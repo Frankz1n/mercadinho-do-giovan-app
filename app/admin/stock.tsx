@@ -21,6 +21,7 @@ import {
   StoreMessage,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
+import { resolveProductImageSource } from '@/features/catalog/product-images';
 import {
   catalogQueryKeys,
   useAdminProducts,
@@ -177,8 +178,12 @@ export default function AdminStockScreen() {
                   style={styles.rowMain}
                 >
                   <Image
-                    contentFit="cover"
-                    source={{ uri: product.imageUrl }}
+                    contentFit="contain"
+                    source={
+                      resolveProductImageSource(product.id, product.imageUrl) ?? {
+                        uri: product.imageUrl,
+                      }
+                    }
                     style={styles.image}
                   />
                   <View style={styles.copy}>

@@ -1,16 +1,19 @@
+import type { ImageSource } from 'expo-image';
 import { useMemo } from 'react';
 
 import { useCart } from '@/features/cart/cart-context';
+import { resolveBasketImageSource } from '@/features/catalog/basket-images';
 import {
   useBaskets,
   useProductsByIds,
 } from '@/features/catalog/data/catalog-queries';
 import type { CartItemKind } from '@/features/catalog/domain/catalog';
+import { resolveProductImageSource } from '@/features/catalog/product-images';
 
 export type ResolvedCartItem = Readonly<{
   id: string;
   kind: CartItemKind;
-  imageUrl: string | null;
+  imageSource: ImageSource | null;
   name: string;
   priceCents: number;
   quantity: number;
@@ -33,6 +36,11 @@ export function useResolvedCart() {
     () => new Map(basketsQuery.data?.map((basket) => [basket.id, basket]) ?? []),
     [basketsQuery.data],
   );
+  const catalogReady =
+    cart.isHydrated &&
+    !(productIds.length > 0 && productsQuery.isPending) &&
+    !basketsQuery.isPending;
+
   const resolvedItems = useMemo(
     () =>
       cart.items.flatMap((item): ResolvedCartItem[] => {
@@ -42,7 +50,10 @@ export function useResolvedCart() {
             ? [
                 {
                   ...item,
-                  imageUrl: product.imageUrl,
+                  imageSource: resolveProductImageSource(
+                    product.id,
+                    product.imageUrl,
+                  ),
                   name: product.name,
                   priceCents: product.priceCents,
                   unitLabel: product.unitLabel,
@@ -56,7 +67,10 @@ export function useResolvedCart() {
           ? [
               {
                 ...item,
-                imageUrl: basket.imageUrl,
+                imageSource: resolveBasketImageSource(
+                  basket.id,
+                  basket.imageUrl,
+                ),
                 name: basket.name,
                 priceCents: basket.priceCents,
                 unitLabel: 'cesta',
@@ -66,19 +80,37 @@ export function useResolvedCart() {
       }),
     [basketMap, cart.items, productMap],
   );
+
+  const unavailableItems = useMemo(() => {
+    if (!catalogReady) {
+      return [] as const;
+    }
+    return cart.items.filter((item) => {
+      if (item.kind === 'product') {
+        return !productMap.has(item.id);
+      }
+      return !basketMap.has(item.id);
+    });
+  }, [basketMap, cart.items, catalogReady, productMap]);
+
   const subtotalCents = resolvedItems.reduce(
     (total, item) => total + item.priceCents * item.quantity,
     0,
   );
 
+  const removeUnavailableItems = () => {
+    for (const item of unavailableItems) {
+      cart.removeItem(item.kind, item.id);
+    }
+  };
+
   return {
     ...cart,
     isError: productsQuery.isError || basketsQuery.isError,
-    isPending:
-      !cart.isHydrated ||
-      (productIds.length > 0 && productsQuery.isPending) ||
-      basketsQuery.isPending,
+    isPending: !catalogReady,
+    removeUnavailableItems,
     resolvedItems,
     subtotalCents,
+    unavailableItems,
   } as const;
 }

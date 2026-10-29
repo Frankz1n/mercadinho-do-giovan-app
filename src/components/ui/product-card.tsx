@@ -27,7 +27,11 @@ export function ProductCard({
   return (
     <View style={styles.container}>
       <Pressable accessibilityRole="button" onPress={onOpen} style={styles.productArea}>
-        <ProductVisual imageUrl={product.imageUrl} visual={product.visual} />
+        <ProductVisual
+          imageUrl={product.imageUrl}
+          productId={product.id}
+          visual={product.visual}
+        />
         <Text numberOfLines={2} style={styles.name}>
           {product.name}
         </Text>

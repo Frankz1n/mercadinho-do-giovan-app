@@ -15,6 +15,7 @@ import {
 import { useCart } from '@/features/cart/cart-context';
 import { useCategories, useProducts } from '@/features/catalog/data/catalog-queries';
 import type { ProductVisual as ProductVisualType } from '@/features/catalog/domain/catalog';
+import { hasLocalProductImage } from '@/features/catalog/product-images';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -36,15 +37,15 @@ const bannerImage =
 export default function HomeScreen() {
   const [search, setSearch] = useState('');
   const categoriesQuery = useCategories();
-  const productsQuery = useProducts({
-    featuredOnly: search.trim().length === 0,
-    search,
-  });
+  const productsQuery = useProducts({ search });
   const { addItem, decrementItem, getItemQuantity } = useCart();
-  const products = useMemo(
-    () => productsQuery.data?.pages.flatMap((page) => page.items) ?? [],
-    [productsQuery.data],
-  );
+  const products = useMemo(() => {
+    const items = productsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    if (search.trim()) {
+      return items;
+    }
+    return items.filter((product) => hasLocalProductImage(product.id));
+  }, [productsQuery.data, search]);
 
   return (
     <ShopScreen showCart={false} title="Mercadinho do Giovan">
@@ -209,11 +210,10 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    rowGap: spacing.sm,
   },
   gridItem: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    minWidth: 148,
+    width: '48%',
   },
 });

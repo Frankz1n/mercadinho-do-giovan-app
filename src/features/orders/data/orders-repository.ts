@@ -202,6 +202,10 @@ export class OrdersRepository {
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
     assertSupabaseConfigured();
 
+    if (status === 'cancelled') {
+      return this.cancelOrder(orderId);
+    }
+
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('orders')
@@ -231,6 +235,20 @@ export class OrdersRepository {
     }
 
     return order;
+  }
+
+  async cancelOrder(orderId: string): Promise<Order> {
+    assertSupabaseConfigured();
+
+    const { data, error } = await supabase.rpc('cancel_order', {
+      p_order_id: orderId,
+    });
+
+    if (error || !data) {
+      throw new Error(error?.message ?? 'Não foi possível cancelar o pedido.');
+    }
+
+    return mapOrderFromRpc(data as Record<string, unknown>);
   }
 }
 

@@ -50,13 +50,8 @@ export default function ProfileScreen() {
 
   const menuItems: MenuItem[] = [
     { href: '/orders', icon: 'receipt-outline', label: 'Meus pedidos' },
-    { href: '/(shop)/home', icon: 'location-outline', label: 'Meus endereços' },
-    { href: '/(shop)/profile', icon: 'person-outline', label: 'Meus dados' },
-    {
-      href: '/(shop)/home',
-      icon: 'chatbubble-ellipses-outline',
-      label: 'Falar com o mercadinho',
-    },
+    { href: '/addresses', icon: 'location-outline', label: 'Meus endereços' },
+    { href: '/account', icon: 'person-outline', label: 'Meus dados' },
   ];
 
   return (

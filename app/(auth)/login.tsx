@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { AppButton, BrandMark, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
+import { resolveSafeReturnTo } from '@/lib/safe-navigation';
 import { colors, spacing, typography } from '@/theme';
 
 const schema = z.object({
@@ -27,6 +28,7 @@ type FormValues = z.infer<typeof schema>;
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const { height, width } = useWindowDimensions();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -56,7 +58,7 @@ export default function LoginScreen() {
         router.replace('/admin');
         return;
       }
-      router.replace('/(shop)/home');
+      router.replace(resolveSafeReturnTo(returnTo));
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Não foi possível entrar.');
     }

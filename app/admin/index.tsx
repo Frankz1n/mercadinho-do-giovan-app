@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AdminScreen, StoreLoadingState } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { useProducts } from '@/features/catalog/data/catalog-queries';
+import { resolveProductImageSource } from '@/features/catalog/product-images';
 import { useOrders } from '@/features/orders/orders-context';
 import { formatCurrencyFromCents } from '@/lib/currency';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
@@ -205,8 +206,12 @@ export default function AdminOverviewScreen() {
                 <View key={product.id} style={styles.topRow}>
                   <Text style={styles.topRank}>{index + 1}</Text>
                   <Image
-                    contentFit="cover"
-                    source={{ uri: product.imageUrl }}
+                    contentFit="contain"
+                    source={
+                      resolveProductImageSource(product.id, product.imageUrl) ?? {
+                        uri: product.imageUrl,
+                      }
+                    }
                     style={styles.topImage}
                   />
                   <View style={styles.topCopy}>

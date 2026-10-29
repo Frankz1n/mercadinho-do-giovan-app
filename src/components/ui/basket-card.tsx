@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
+import { resolveBasketImageSource } from '@/features/catalog/basket-images';
 import type { Basket, Product } from '@/features/catalog/domain/catalog';
 import { formatCurrencyFromCents } from '@/lib/currency';
 import {
@@ -45,12 +46,20 @@ export function BasketCard({
 
   return (
     <View style={styles.container}>
-      <Image
-        contentFit="cover"
-        source={{ uri: basket.imageUrl }}
-        style={styles.hero}
-        transition={200}
-      />
+      <View style={styles.hero}>
+        <Image
+          cachePolicy="memory-disk"
+          contentFit="contain"
+          recyclingKey={basket.id}
+          source={
+            resolveBasketImageSource(basket.id, basket.imageUrl) ?? {
+              uri: basket.imageUrl,
+            }
+          }
+          style={styles.heroImage}
+          transition={150}
+        />
+      </View>
       <View style={styles.body}>
         <Text style={styles.name}>{basket.name}</Text>
         <Text style={styles.price}>{formatCurrencyFromCents(basket.priceCents)}</Text>
@@ -135,8 +144,14 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   hero: {
-    backgroundColor: colors.brand.deep,
-    height: 168,
+    alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  heroImage: {
+    height: '100%',
     width: '100%',
   },
   body: {

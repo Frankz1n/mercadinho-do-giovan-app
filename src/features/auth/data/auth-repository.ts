@@ -1,4 +1,5 @@
 import type { AppUser, UserRole } from '@/features/auth/domain/auth';
+import { profileDetailsSchema } from '@/features/auth/profile-schema';
 import { assertSupabaseConfigured, supabase } from '@/lib/supabase';
 
 type ProfileRow = {
@@ -162,6 +163,54 @@ export class AuthRepository {
       message:
         'Se existir uma conta com este e-mail, enviamos as instruções de recuperação.',
     };
+  }
+
+  async updateProfile(input: { name: string; phone: string }): Promise<AppUser> {
+    assertSupabaseConfigured();
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      throw new Error(sessionError.message);
+    }
+
+    if (!session?.user) {
+      throw new Error('Faça login para atualizar seus dados.');
+    }
+
+    const parsed = profileDetailsSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message ?? 'Dados inválidos.');
+    }
+
+    const { name, phone } = parsed.data;
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ name, phone })
+      .eq('id', session.user.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: { name, phone },
+    });
+
+    if (metaError) {
+      throw new Error(metaError.message);
+    }
+
+    const profile = await fetchProfile(session.user.id);
+    if (!profile) {
+      throw new Error('Não foi possível carregar o perfil atualizado.');
+    }
+
+    return profile;
   }
 
   async logout(): Promise<void> {

@@ -24,7 +24,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   web: {
     bundler: 'metro',
-    output: 'static',
+    // SPA: evita SSR no Node (AsyncStorage/`window` derrubava o Metro no start).
+    output: 'single',
   },
   plugins: [
     'expo-router',

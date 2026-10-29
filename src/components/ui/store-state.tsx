@@ -18,6 +18,7 @@ export function StoreLoadingState() {
 }
 
 type StoreMessageProps = {
+  actionLabel?: string;
   description: string;
   onRetry?: () => void;
   title: string;
@@ -25,6 +26,7 @@ type StoreMessageProps = {
 };
 
 export function StoreMessage({
+  actionLabel = 'Tentar novamente',
   description,
   onRetry,
   title,
@@ -41,7 +43,7 @@ export function StoreMessage({
       <Text style={styles.description}>{description}</Text>
       {onRetry && (
         <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}>
-          <Text style={styles.retryLabel}>Tentar novamente</Text>
+          <Text style={styles.retryLabel}>{actionLabel}</Text>
         </Pressable>
       )}
     </View>

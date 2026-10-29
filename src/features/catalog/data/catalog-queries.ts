@@ -55,7 +55,7 @@ export function useProducts({
       catalogRepository.listProducts({
         categoryId,
         featuredOnly,
-        limit: 6,
+        limit: 100,
         offset: pageParam,
         search,
       }),

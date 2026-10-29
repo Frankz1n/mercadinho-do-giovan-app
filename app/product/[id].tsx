@@ -43,7 +43,11 @@ export default function ProductDetailScreen() {
       ) : (
         <>
           <View style={styles.card}>
-            <ProductVisual imageUrl={product.imageUrl} visual={product.visual} />
+            <ProductVisual
+              imageUrl={product.imageUrl}
+              productId={product.id}
+              visual={product.visual}
+            />
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
                 {product.stockQuantity > 0

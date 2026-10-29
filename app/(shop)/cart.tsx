@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppButton,
@@ -12,8 +11,6 @@ import { useResolvedCart } from '@/features/cart/use-resolved-cart';
 import { formatCurrencyFromCents } from '@/lib/currency';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 
-type Fulfillment = 'pickup' | 'delivery';
-
 export default function CartScreen() {
   const {
     addItem,
@@ -21,12 +18,20 @@ export default function CartScreen() {
     decrementItem,
     items,
     removeItem,
+    removeUnavailableItems,
     resolvedItems,
     subtotalCents,
+    unavailableItems,
     isError,
     isPending,
   } = useResolvedCart();
-  const [fulfillment, setFulfillment] = useState<Fulfillment>('pickup');
+
+  const onClearCart = () => {
+    Alert.alert('Limpar carrinho', 'Remover todos os itens do carrinho?', [
+      { text: 'Manter', style: 'cancel' },
+      { text: 'Limpar', style: 'destructive', onPress: clearCart },
+    ]);
+  };
 
   return (
     <ShopScreen title="Carrinho">
@@ -35,7 +40,7 @@ export default function CartScreen() {
           Meu carrinho
         </Text>
         {items.length > 0 ? (
-          <AppButton label="Limpar" onPress={clearCart} variant="secondary" />
+          <AppButton label="Limpar" onPress={onClearCart} variant="secondary" />
         ) : null}
       </View>
 
@@ -47,72 +52,68 @@ export default function CartScreen() {
           title="Falha ao carregar"
           variant="error"
         />
-      ) : resolvedItems.length === 0 ? (
+      ) : resolvedItems.length === 0 && unavailableItems.length === 0 ? (
         <StoreMessage
           description="Adicione produtos ou cestas para continuar."
           title="Seu carrinho está vazio"
         />
       ) : (
         <>
-          <View style={styles.list}>
-            {resolvedItems.map((item) => (
-              <CartItemRow
-                imageUrl={item.imageUrl}
-                key={`${item.kind}:${item.id}`}
-                name={item.name}
-                onAdd={() => addItem(item.kind, item.id)}
-                onDecrement={() => decrementItem(item.kind, item.id)}
-                onRemove={() => removeItem(item.kind, item.id)}
-                priceCents={item.priceCents}
-                quantity={item.quantity}
-                unitLabel={item.unitLabel}
-              />
-            ))}
-          </View>
+          {unavailableItems.length > 0 ? (
+            <StoreMessage
+              actionLabel="Remover indisponíveis"
+              description={`${unavailableItems.length} item(ns) não estão mais disponíveis no catálogo.`}
+              onRetry={removeUnavailableItems}
+              title="Itens indisponíveis"
+              variant="error"
+            />
+          ) : null}
 
-          <View style={styles.summary}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>
-                {formatCurrencyFromCents(subtotalCents)}
-              </Text>
-            </View>
-
-            <Text style={styles.fulfillmentTitle}>Como deseja receber?</Text>
-            <Pressable
-              onPress={() => setFulfillment('pickup')}
-              style={[
-                styles.option,
-                fulfillment === 'pickup' && styles.optionSelected,
-              ]}
-            >
-              <View
-                style={[
-                  styles.radio,
-                  fulfillment === 'pickup' && styles.radioSelected,
-                ]}
-              />
-              <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Retirar na loja</Text>
-                <Text style={styles.optionMeta}>Sem taxa · mais rápido</Text>
+          {resolvedItems.length > 0 ? (
+            <>
+              <View style={styles.list}>
+                {resolvedItems.map((item) => (
+                  <CartItemRow
+                    imageSource={item.imageSource}
+                    key={`${item.kind}:${item.id}`}
+                    name={item.name}
+                    onAdd={() => addItem(item.kind, item.id)}
+                    onDecrement={() => decrementItem(item.kind, item.id)}
+                    onRemove={() => removeItem(item.kind, item.id)}
+                    priceCents={item.priceCents}
+                    quantity={item.quantity}
+                    unitLabel={item.unitLabel}
+                  />
+                ))}
               </View>
-            </Pressable>
-            <Pressable disabled style={[styles.option, styles.optionDisabled]}>
-              <View style={styles.radio} />
-              <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>Entrega</Text>
-                <Text style={styles.optionMeta}>Em breve</Text>
-              </View>
-            </Pressable>
 
-            <View style={[styles.summaryRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrencyFromCents(subtotalCents)}
-              </Text>
-            </View>
-            <AppButton href="/checkout" label="Continuar pedido" />
-          </View>
+              <View style={styles.summary}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Subtotal</Text>
+                  <Text style={styles.summaryValue}>
+                    {formatCurrencyFromCents(subtotalCents)}
+                  </Text>
+                </View>
+
+                <Text style={styles.fulfillmentTitle}>Retirada na loja</Text>
+                <Text style={styles.optionMeta}>
+                  Pagamento na retirada · sem taxa de entrega por enquanto.
+                </Text>
+
+                <View style={[styles.summaryRow, styles.totalRow]}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>
+                    {formatCurrencyFromCents(subtotalCents)}
+                  </Text>
+                </View>
+                <AppButton
+                  disabled={unavailableItems.length > 0}
+                  href="/checkout"
+                  label="Continuar pedido"
+                />
+              </View>
+            </>
+          ) : null}
         </>
       )}
     </ShopScreen>
@@ -158,45 +159,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.interfaceSemibold,
     fontSize: 15,
   },
-  option: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.sm,
-  },
-  optionSelected: {
-    backgroundColor: '#EEF2FF',
-    borderColor: colors.brand.primary,
-  },
-  optionDisabled: {
-    opacity: 0.55,
-  },
-  radio: {
-    borderColor: colors.border,
-    borderRadius: radii.pill,
-    borderWidth: 2,
-    height: 18,
-    width: 18,
-  },
-  radioSelected: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  optionCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  optionTitle: {
-    color: colors.text.primary,
-    fontFamily: typography.interfaceSemibold,
-  },
   optionMeta: {
     color: colors.text.secondary,
     fontFamily: typography.interfaceRegular,
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
   },
   totalRow: {
     borderTopColor: colors.border,

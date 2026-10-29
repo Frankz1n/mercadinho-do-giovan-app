@@ -36,10 +36,29 @@ function resolveProjectId() {
   );
 }
 
+let lastRegisterAttemptAt = 0;
+let lastRegisterUserId: string | null = null;
+let cachedPushToken: string | null = null;
+
 export async function registerForPushNotifications(userId: string) {
   if (Platform.OS === 'web') {
     return null;
   }
+
+  // Evita spam de upsert/RLS a cada Fast Refresh no emulador.
+  const now = Date.now();
+  if (
+    lastRegisterUserId === userId &&
+    cachedPushToken &&
+    now - lastRegisterAttemptAt < 60_000
+  ) {
+    return cachedPushToken;
+  }
+  if (lastRegisterUserId === userId && now - lastRegisterAttemptAt < 15_000) {
+    return cachedPushToken;
+  }
+  lastRegisterAttemptAt = now;
+  lastRegisterUserId = userId;
 
   const Notifications = getNotifications();
   if (!Notifications) {
@@ -93,9 +112,11 @@ export async function registerForPushNotifications(userId: string) {
 
     if (error) {
       console.warn('[push] não foi possível salvar o token', error.message);
+      cachedPushToken = null;
       return null;
     }
 
+    cachedPushToken = token;
     return token;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

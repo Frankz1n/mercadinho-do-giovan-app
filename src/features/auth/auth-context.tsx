@@ -24,6 +24,7 @@ type AuthContextValue = {
     password: string;
   }) => Promise<AppUser>;
   recoverPassword: (email: string) => Promise<{ message: string }>;
+  updateProfile: (input: { name: string; phone: string }) => Promise<AppUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -89,6 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authRepository.recoverPassword(email);
   }, []);
 
+  const updateProfile = useCallback(async (input: { name: string; phone: string }) => {
+    const nextUser = await authRepository.updateProfile(input);
+    setUser(nextUser);
+    return nextUser;
+  }, []);
+
   const logout = useCallback(async () => {
     await authRepository.logout();
     setUser(null);
@@ -102,10 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       recoverPassword,
+      updateProfile,
       logout,
       refresh,
     }),
-    [user, isLoading, login, register, recoverPassword, logout, refresh],
+    [user, isLoading, login, register, recoverPassword, updateProfile, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

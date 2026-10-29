@@ -41,6 +41,95 @@ export type Database = {
           },
         ];
       };
+      order_stock_ledger: {
+        Row: {
+          order_id: string;
+          product_id: string;
+          quantity: number;
+        };
+        Insert: {
+          order_id: string;
+          product_id: string;
+          quantity: number;
+        };
+        Update: {
+          order_id?: string;
+          product_id?: string;
+          quantity?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_stock_ledger_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_stock_ledger_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      addresses: {
+        Row: {
+          id: string;
+          user_id: string;
+          label: string;
+          zip_code: string;
+          street: string;
+          number: string;
+          complement: string;
+          neighborhood: string;
+          city: string;
+          state: string;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          label?: string;
+          zip_code: string;
+          street: string;
+          number: string;
+          complement?: string;
+          neighborhood: string;
+          city: string;
+          state: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          label?: string;
+          zip_code?: string;
+          street?: string;
+          number?: string;
+          complement?: string;
+          neighborhood?: string;
+          city?: string;
+          state?: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;
@@ -302,6 +391,12 @@ export type Database = {
         Args: {
           p_items: Json;
           p_notes?: string | null;
+        };
+        Returns: Json;
+      };
+      cancel_order: {
+        Args: {
+          p_order_id: string;
         };
         Returns: Json;
       };

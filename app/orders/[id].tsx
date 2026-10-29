@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppButton,
@@ -41,6 +41,43 @@ export default function OrderDetailScreen() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const onCancelOrder = () => {
+    if (!order) {
+      return;
+    }
+
+    Alert.alert(
+      'Cancelar pedido',
+      `Cancelar ${order.code}? O estoque dos itens volta para a loja.`,
+      [
+        { text: 'Manter', style: 'cancel' },
+        {
+          text: 'Cancelar pedido',
+          style: 'destructive',
+          onPress: () => void onUpdateStatus('cancelled'),
+        },
+      ],
+    );
+  };
+
+  const onCompleteOrder = () => {
+    if (!order) {
+      return;
+    }
+
+    Alert.alert(
+      'Confirmar baixa',
+      `Confirma pagamento de ${formatCurrencyFromCents(order.subtotalCents)} no pedido ${order.code}?`,
+      [
+        { text: 'Voltar', style: 'cancel' },
+        {
+          text: 'Confirmar baixa',
+          onPress: () => void onUpdateStatus('completed'),
+        },
+      ],
+    );
   };
 
   return (
@@ -142,7 +179,16 @@ export default function OrderDetailScreen() {
                       ? 'Dando baixa…'
                       : 'Recebi o pagamento · dar baixa'
                   }
-                  onPress={() => void onUpdateStatus('completed')}
+                  onPress={onCompleteOrder}
+                />
+              ) : null}
+              {order.status === 'awaiting_pickup' ||
+              order.status === 'ready_for_pickup' ? (
+                <AppButton
+                  disabled={isUpdating}
+                  label="Cancelar pedido"
+                  onPress={onCancelOrder}
+                  variant="secondary"
                 />
               ) : null}
               <AppButton

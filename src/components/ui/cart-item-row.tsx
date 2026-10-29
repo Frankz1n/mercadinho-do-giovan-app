@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+import { Image, type ImageSource } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
@@ -14,7 +14,7 @@ import {
 } from '@/theme';
 
 type CartItemRowProps = {
-  imageUrl?: string | null;
+  imageSource?: ImageSource | null;
   name: string;
   onAdd: () => void;
   onDecrement: () => void;
@@ -25,7 +25,7 @@ type CartItemRowProps = {
 };
 
 export function CartItemRow({
-  imageUrl,
+  imageSource,
   name,
   onAdd,
   onDecrement,
@@ -36,8 +36,8 @@ export function CartItemRow({
 }: CartItemRowProps) {
   return (
     <View style={styles.container}>
-      {imageUrl ? (
-        <Image contentFit="cover" source={{ uri: imageUrl }} style={styles.image} />
+      {imageSource ? (
+        <Image contentFit="cover" source={imageSource} style={styles.image} />
       ) : (
         <View style={[styles.image, styles.imageFallback]}>
           <Ionicons color={colors.brand.primary} name="basket-outline" size={24} />

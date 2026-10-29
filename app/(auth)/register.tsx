@@ -17,11 +17,15 @@ import { z } from 'zod';
 
 import { AppButton, BrandMark, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
+import {
+  profileNameSchema,
+  profilePhoneSchema,
+} from '@/features/auth/profile-schema';
 import { colors, minimumTouchTarget, radii, spacing, typography } from '@/theme';
 
 const schema = z.object({
-  name: z.string().min(2, 'Informe seu nome completo.'),
-  phone: z.string().min(8, 'Informe um WhatsApp válido.'),
+  name: profileNameSchema,
+  phone: profilePhoneSchema,
   email: z.email('Informe um e-mail válido.'),
   password: z.string().min(6, 'A senha precisa ter ao menos 6 caracteres.'),
   acceptedTerms: z.boolean().refine((value) => value, {
@@ -169,16 +173,35 @@ export default function RegisterScreen() {
             control={control}
             name="acceptedTerms"
             render={({ field: { value, onChange } }) => (
-              <Pressable onPress={() => onChange(!value)} style={styles.termsRow}>
-                <View style={[styles.checkbox, value && styles.checkboxChecked]}>
+              <View style={styles.termsRow}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: value }}
+                  onPress={() => onChange(!value)}
+                  style={[styles.checkbox, value && styles.checkboxChecked]}
+                >
                   {value ? (
                     <Ionicons color={colors.text.inverse} name="checkmark" size={14} />
                   ) : null}
-                </View>
+                </Pressable>
                 <Text style={styles.termsText}>
-                  Li e aceito os Termos de Uso e a Política de Privacidade.
+                  Li e aceito os{' '}
+                  <Text
+                    onPress={() => router.push('/legal/terms')}
+                    style={styles.termsLink}
+                  >
+                    Termos de Uso
+                  </Text>{' '}
+                  e a{' '}
+                  <Text
+                    onPress={() => router.push('/legal/privacy')}
+                    style={styles.termsLink}
+                  >
+                    Política de Privacidade
+                  </Text>
+                  .
                 </Text>
-              </Pressable>
+              </View>
             )}
           />
           {errors.acceptedTerms?.message ? (
@@ -259,6 +282,11 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: colors.brand.primary,
     borderColor: colors.brand.primary,
+  },
+  termsLink: {
+    color: colors.brand.primary,
+    fontFamily: typography.interfaceSemibold,
+    textDecorationLine: 'underline',
   },
   termsText: {
     color: colors.text.secondary,

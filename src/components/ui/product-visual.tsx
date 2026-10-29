@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+import { Image, type ImageSource } from 'expo-image';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { resolveProductImageSource } from '@/features/catalog/product-images';
 import type { ProductVisual as ProductVisualType } from '@/features/catalog/domain/catalog';
 import { colors, radii } from '@/theme';
 
@@ -21,58 +22,62 @@ const visualIcons: Record<ProductVisualType, IoniconName> = {
 
 type ProductVisualProps = {
   compact?: boolean;
+  imageSource?: ImageSource | null;
   imageUrl?: string | null;
+  productId?: string;
   visual: ProductVisualType;
 };
 
 export function ProductVisual({
   compact = false,
+  imageSource,
   imageUrl,
+  productId,
   visual,
 }: ProductVisualProps) {
-  if (imageUrl) {
-    return (
-      <Image
-        contentFit="cover"
-        source={{ uri: imageUrl }}
-        style={[styles.image, compact && styles.compactImage]}
-        transition={200}
-      />
-    );
-  }
+  const resolved =
+    imageSource ??
+    (productId ? resolveProductImageSource(productId, imageUrl) : null) ??
+    (imageUrl ? { uri: imageUrl } : null);
 
   return (
-    <View style={[styles.container, compact && styles.compactContainer]}>
-      <Ionicons
-        color={colors.brand.primary}
-        name={visualIcons[visual]}
-        size={compact ? 26 : 44}
-      />
+    <View style={[styles.frame, compact && styles.compactFrame]}>
+      {resolved ? (
+        <Image
+          cachePolicy="memory-disk"
+          contentFit="contain"
+          recyclingKey={productId ?? imageUrl ?? undefined}
+          source={resolved}
+          style={styles.image}
+          transition={150}
+        />
+      ) : (
+        <Ionicons
+          color={colors.brand.primary}
+          name={visualIcons[visual]}
+          size={compact ? 26 : 44}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  frame: {
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     borderRadius: radii.md,
     height: 112,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: '100%',
   },
-  compactContainer: {
+  compactFrame: {
     height: 64,
     width: 64,
   },
   image: {
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    height: 112,
+    height: '100%',
     width: '100%',
-  },
-  compactImage: {
-    height: 64,
-    width: 64,
   },
 });

@@ -134,11 +134,10 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    rowGap: spacing.sm,
   },
   gridItem: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    minWidth: 148,
+    width: '48%',
   },
 });

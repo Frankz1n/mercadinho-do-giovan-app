@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   AdminScreen,
@@ -18,6 +18,7 @@ const filters: { label: string; value: OrderStatus | 'all' }[] = [
   { label: 'Fila', value: 'awaiting_pickup' },
   { label: 'Prontos', value: 'ready_for_pickup' },
   { label: 'Baixados', value: 'completed' },
+  { label: 'Cancelados', value: 'cancelled' },
   { label: 'Todos', value: 'all' },
 ];
 
@@ -49,6 +50,35 @@ export default function AdminOrdersScreen() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const onCancel = (orderId: string, code: string) => {
+    Alert.alert(
+      'Cancelar pedido',
+      `Cancelar ${code}? O estoque dos itens volta para a loja.`,
+      [
+        { text: 'Manter', style: 'cancel' },
+        {
+          text: 'Cancelar pedido',
+          style: 'destructive',
+          onPress: () => void onUpdate(orderId, 'cancelled'),
+        },
+      ],
+    );
+  };
+
+  const onComplete = (orderId: string, code: string, totalCents: number) => {
+    Alert.alert(
+      'Confirmar baixa',
+      `Confirma pagamento de ${formatCurrencyFromCents(totalCents)} no pedido ${code}?`,
+      [
+        { text: 'Voltar', style: 'cancel' },
+        {
+          text: 'Confirmar baixa',
+          onPress: () => void onUpdate(orderId, 'completed'),
+        },
+      ],
+    );
   };
 
   return (
@@ -136,7 +166,19 @@ export default function AdminOrdersScreen() {
                       ? 'Baixando…'
                       : 'Recebi o pagamento · dar baixa'
                   }
-                  onPress={() => void onUpdate(order.id, 'completed')}
+                  onPress={() =>
+                    onComplete(order.id, order.code, order.subtotalCents)
+                  }
+                />
+              ) : null}
+
+              {order.status === 'awaiting_pickup' ||
+              order.status === 'ready_for_pickup' ? (
+                <AppButton
+                  disabled={busyId === order.id}
+                  label="Cancelar pedido"
+                  onPress={() => onCancel(order.id, order.code)}
+                  variant="secondary"
                 />
               ) : null}
             </View>
