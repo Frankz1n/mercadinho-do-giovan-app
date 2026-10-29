@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   AppButton,
@@ -14,11 +13,13 @@ import {
 } from '@/components/ui';
 import { useCart } from '@/features/cart/cart-context';
 import { useCategories, useProducts } from '@/features/catalog/data/catalog-queries';
-import { colors, radii, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 export default function CategoriesScreen() {
   const params = useLocalSearchParams<{ categoryId?: string }>();
-  const [categoryId, setCategoryId] = useState<string | undefined>(params.categoryId);
+  const initialCategoryId =
+    typeof params.categoryId === 'string' ? params.categoryId : undefined;
+  const [categoryId, setCategoryId] = useState<string | undefined>(initialCategoryId);
   const [search, setSearch] = useState('');
   const categoriesQuery = useCategories();
   const productsQuery = useProducts({ categoryId, search });
@@ -27,22 +28,24 @@ export default function CategoriesScreen() {
     () => productsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [productsQuery.data],
   );
+  const selectedCategoryName = useMemo(
+    () => categoriesQuery.data?.find((category) => category.id === categoryId)?.name,
+    [categoriesQuery.data, categoryId],
+  );
+
+  useEffect(() => {
+    setCategoryId(initialCategoryId);
+  }, [initialCategoryId]);
 
   return (
     <ShopScreen title="Produtos">
-      <View style={styles.searchRow}>
-        <View style={styles.searchFlex}>
-          <SearchField onChangeText={setSearch} value={search} />
-        </View>
-        <Pressable accessibilityLabel="Filtros" style={styles.filterButton}>
-          <Ionicons color={colors.brand.primary} name="options-outline" size={22} />
-        </Pressable>
-      </View>
+      <SearchField onChangeText={setSearch} value={search} />
 
       <ScrollView
         contentContainerStyle={styles.chips}
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.chipsScroll}
       >
         <CategoryChip
           isSelected={!categoryId}
@@ -70,7 +73,11 @@ export default function CategoriesScreen() {
         />
       ) : products.length === 0 ? (
         <StoreMessage
-          description="Altere a busca ou selecione outra categoria."
+          description={
+            selectedCategoryName
+              ? `Ainda não há itens em ${selectedCategoryName}. Toque em Todos para ver o catálogo.`
+              : 'Altere a busca ou selecione outra categoria.'
+          }
           title="Nenhum produto encontrado"
         />
       ) : (
@@ -110,26 +117,14 @@ export default function CategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  searchFlex: {
-    flex: 1,
-  },
-  filterButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
+  chipsScroll: {
+    flexGrow: 0,
   },
   chips: {
+    alignItems: 'center',
     gap: spacing.xs,
+    paddingEnd: spacing.md,
+    paddingVertical: spacing.xxs,
   },
   grid: {
     flexDirection: 'row',

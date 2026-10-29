@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { Href } from 'expo-router';
 import { router, usePathname } from 'expo-router';
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,11 +22,19 @@ const navigationItems: {
   { href: '/(shop)/profile', icon: 'person-outline', label: 'Perfil', path: '/profile' },
 ];
 
+/** Rotas com painéis azuis sob o bar — usa contraste claro. */
+const darkContentPaths = ['/baskets', '/product/'] as const;
+
+function isDarkContentPath(pathname: string) {
+  return darkContentPaths.some((path) => pathname.includes(path));
+}
+
 export function ShopBottomBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { totalCount } = useCart();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const usesLightTone = useMemo(() => isDarkContentPath(pathname), [pathname]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () =>
@@ -46,6 +54,9 @@ export function ShopBottomBar() {
     return null;
   }
 
+  const inactiveColor = usesLightTone ? colors.text.secondary : colors.text.inverse;
+  const activeColor = usesLightTone ? colors.brand.primary : colors.brand.yellow;
+
   return (
     <View
       style={[
@@ -53,7 +64,13 @@ export function ShopBottomBar() {
         { paddingBottom: Math.max(insets.bottom, spacing.sm) },
       ]}
     >
-      <View accessibilityRole="tablist" style={styles.container}>
+      <View
+        accessibilityRole="tablist"
+        style={[
+          styles.container,
+          usesLightTone ? styles.containerLight : styles.containerDark,
+        ]}
+      >
         {navigationItems.map((item) => {
           const isActive = pathname.endsWith(item.path);
 
@@ -71,7 +88,7 @@ export function ShopBottomBar() {
               style={styles.item}
             >
               <Ionicons
-                color={isActive ? colors.brand.yellow : colors.text.inverse}
+                color={isActive ? activeColor : inactiveColor}
                 name={item.icon}
                 size={22}
               />
@@ -80,7 +97,13 @@ export function ShopBottomBar() {
                   <Text style={styles.badgeText}>{Math.min(totalCount, 99)}</Text>
                 </View>
               ) : null}
-              <Text style={[styles.label, isActive && styles.activeLabel]}>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isActive ? activeColor : inactiveColor },
+                  isActive && styles.activeLabel,
+                ]}
+              >
                 {item.label}
               </Text>
             </Pressable>
@@ -100,17 +123,29 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: 'center',
-    backgroundColor: colors.brand.primary,
     borderRadius: radii.xl,
     flexDirection: 'row',
     justifyContent: 'space-around',
     minHeight: 64,
     paddingHorizontal: spacing.xs,
+  },
+  containerDark: {
+    backgroundColor: colors.brand.primary,
+    elevation: 10,
     shadowColor: '#061C6C',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
-    elevation: 10,
+  },
+  containerLight: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    elevation: 14,
+    shadowColor: '#061C6C',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
   },
   item: {
     alignItems: 'center',
@@ -120,13 +155,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   label: {
-    color: colors.text.inverse,
     fontFamily: typography.interfaceRegular,
     fontSize: 11,
     marginTop: 2,
   },
   activeLabel: {
-    color: colors.brand.yellow,
     fontFamily: typography.interfaceSemibold,
   },
   badge: {

@@ -30,8 +30,20 @@ export function StoreHeader({
   const { totalCount } = useCart();
   const insets = useSafeAreaInsets();
 
+  // Em builds de desenvolvimento o FAB do Expo Dev Client cobre o canto
+  // superior direito; reserva espaço para o ícone do app continuar tocável.
+  const headerEndInset = __DEV__ ? spacing.xl + spacing.lg : 0;
+
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, spacing.sm) }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingEnd: spacing.md + headerEndInset,
+          paddingTop: Math.max(insets.top, spacing.sm),
+        },
+      ]}
+    >
       <BrandMark size={44} />
       <View style={styles.copy}>
         <View style={styles.titleRow}>
@@ -85,7 +97,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingStart: spacing.md,
   },
   copy: {
     flex: 1,

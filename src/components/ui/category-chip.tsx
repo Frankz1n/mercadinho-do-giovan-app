@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, minimumTouchTarget, radii, spacing, typography } from '@/theme';
+import { colors, radii, spacing, typography } from '@/theme';
 
 type CategoryChipProps = {
   isSelected: boolean;
@@ -24,12 +24,15 @@ export function CategoryChip({ isSelected, label, onPress }: CategoryChipProps) 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    alignSelf: 'flex-start',
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radii.pill,
     borderWidth: 1,
+    flexShrink: 0,
+    height: 40,
     justifyContent: 'center',
-    minHeight: minimumTouchTarget,
+    minHeight: 40,
     paddingHorizontal: spacing.md,
   },
   selectedContainer: {
@@ -40,6 +43,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: typography.interfaceMedium,
     fontSize: 13,
+    includeFontPadding: false,
   },
   selectedLabel: {
     color: colors.text.inverse,
